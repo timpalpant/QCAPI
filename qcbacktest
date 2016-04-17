@@ -1,0 +1,58 @@
+#!/usr/bin/env python
+
+import argparse
+import json
+import logging
+from qcapi import (
+    QCBacktest,
+    QCClient,
+    QCProject,
+)
+
+
+def load_config(filename):
+    with open(filename) as fd:
+        return json.load(fd)
+
+
+def opts():
+    parser = argparse.ArgumentParser(
+        description='CLI for managing a project with the QC REST API.')
+    parser.add_argument('command', choices=['build', 'backtest', 'delete'])
+    parser.add_argument('-c', '--config', default='config.json',
+                        help='QC API config file')
+    parser.add_argument('--compile_id', help='Reuse a previous compile ID')
+    parser.add_argument('--backtest_id', help='Backtest to delete')
+    parser.add_argument('--name', help='Backtest name')
+    return parser
+
+
+def main(args):
+    logging.basicConfig(level=logging.DEBUG)
+    cfg = load_config(args.config)
+    project = QCProject.from_config(cfg)
+
+    if args.command == 'build':
+        logging.info("Building project")
+        c = project.compile()
+        for entry in c.log:
+            logging.debug(
+                "[%s] [%s] %s", entry['time'], entry['type'], entry['entry'])
+        logging.info("Compile id: %s", c.id)
+        print c.id
+    elif args.command == 'backtest':
+        logging.info("Running backtest")
+        backtest = project.backtest(args.name, args.compile_id)
+        results = backtest.wait()
+        print json.dumps(results, sort_keys=True,
+                         indent=4, separators=(',', ': '))
+    elif args.command == 'delete':
+        client = QCClient.from_config(cfg)
+        backtest = QCBacktest(client, args.backtest_id)
+    else:
+        raise ValueError("Unknown command: %s" % args.command)
+
+
+if __name__ == "__main__":
+    args = opts().parse_args()
+    main(args)

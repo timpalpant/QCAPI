@@ -1,0 +1,85 @@
+#!/usr/bin/env python
+
+import argparse
+import json
+import logging
+import os
+
+from qcapi import (
+    QCAPI,
+    QCClient,
+    QCProject,
+)
+
+
+def load_config(filename):
+    with open(filename) as fd:
+        return json.load(fd)
+
+
+def save_config(cfg, filename):
+    with open(filename, 'w') as fd:
+        json.dump(cfg, fd, sort_keys=True, indent=4, separators=(',', ': '))
+
+
+def opts():
+    parser = argparse.ArgumentParser(
+        description='CLI for managing a project with the QC REST API.')
+    parser.add_argument('command', choices=['init', 'ls', 'delete'])
+    parser.add_argument('-c', '--config', default='config.json',
+                        help='QC API config file')
+    parser.add_argument('-u', '--username', help='QC username')
+    parser.add_argument('-p', '--password', help='QC password')
+    parser.add_argument('--project_id', type=int, help='QC project ID')
+    parser.add_argument('--name', help='QC project name')
+    return parser
+
+
+def main(args):
+    logging.basicConfig(level=logging.DEBUG)
+    if args.username and args.password:
+        cfg = {
+            'username': args.username,
+            'password': args.password,
+        }
+    elif os.path.isfile(args.config):
+        cfg = load_config(args.config)
+    else:
+        raise ValueError("You must provide username/password")
+
+    client = QCClient.from_config(cfg)
+    api = QCAPI(client)
+
+    if args.command == 'init':
+        if args.project_id:
+            projects = api.list_projects()
+            assert any(prj.id == args.project_id for prj in projects), \
+                "No project found with id: %s" % args.project_id
+            cfg['project_id'] = args.project_id
+        elif args.name:
+            logging.info("Creating new project with name: %s", args.name)
+            project = api.create_project(args.name)
+            logging.debug("Created project id: %s", project.id)
+            cfg['project_id'] = project.id
+        else:
+            raise ValueError("You must provide a project name or id")
+
+        logging.info("Saving project config to: %s", args.config)
+        save_config(cfg, args.config)
+    elif args.command == 'ls':
+        projects = api.list_projects()
+        for prj in projects:
+            print "%s\t%s" % (prj.id, prj.name)
+    elif args.command == 'delete':
+        if args.project_id:
+            project = QCProject(client, args.project_id)
+        else:
+            project = QCProject.from_config(cfg)
+        project.delete()
+    else:
+        raise ValueError("Unknown command: %s" % args.command)
+
+
+if __name__ == "__main__":
+    args = opts().parse_args()
+    main(args)

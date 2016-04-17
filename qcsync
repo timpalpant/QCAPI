@@ -1,0 +1,77 @@
+#!/usr/bin/env python
+
+import argparse
+import difflib
+import glob
+import json
+import logging
+import os
+
+from qcapi import QCProject
+
+
+def load_config(filename):
+    with open(filename) as fd:
+        return json.load(fd)
+
+
+def opts():
+    parser = argparse.ArgumentParser(
+        description='CLI for managing a project with the QC REST API.')
+    parser.add_argument('command', choices=['pull', 'push', 'diff'])
+    parser.add_argument('-c', '--config', default='config.json',
+                        help='QC API config file')
+    return parser
+
+
+def main(args):
+    logging.basicConfig(level=logging.DEBUG)
+    cfg = load_config(args.config)
+    project = QCProject.from_config(cfg)
+
+    if args.command == 'pull':
+        files = project.read()
+        logging.debug('Downloaded %d files', len(files))
+        for f in files:
+            logging.debug('Saving: %s', f['name'])
+            with open(os.path.join('.', f['name']), 'w') as fd:
+                fd.write(f['code'])
+    elif args.command == 'push':
+        files_to_upload = glob.glob('*.cs') + glob.glob("**/*.cs")
+        logging.info("Uploading %d files", len(files_to_upload))
+        files = []
+        for fn in files_to_upload:
+            contents = open(fn).read()
+            logging.debug("Filename: %s (%d characters)", fn, len(contents))
+            files.append({'name': fn, 'code': contents})
+        project.update(files)
+        logging.info("Project updated successfully")
+    elif args.command == 'diff':
+        local_files = glob.glob('*.cs') + glob.glob('**/*.cs')
+        remote_files = project.read()
+        remote_filenames = [f['name'] for f in remote_files]
+
+        removed_local = set(remote_filenames) - set(local_files)
+        for f in removed_local:
+            print "Removed: %s" % f
+
+        added_local = set(local_files) - set(remote_filenames)
+        for f in added_local:
+            print "Added: %s" % f
+
+        for f in remote_files:
+            fullpath = os.path.join('.', f['name'])
+            if not os.path.isfile(fullpath):
+                continue
+            local_content = [line.rstrip() for line in open(fullpath)]
+            remote_content = [line.rstrip() for line in f['code'].split('\n')]
+            diff = difflib.unified_diff(remote_content, local_content)
+            for line in diff:
+                print line.rstrip()
+    else:
+        raise ValueError("Unknown command: %s" % args.command)
+
+
+if __name__ == "__main__":
+    args = opts().parse_args()
+    main(args)
