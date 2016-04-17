@@ -18,7 +18,7 @@ def load_config(filename):
 def opts():
     parser = argparse.ArgumentParser(
         description='CLI for managing a project with the QC REST API.')
-    parser.add_argument('command', choices=['build', 'backtest', 'delete'])
+    parser.add_argument('command', choices=['build', 'backtest', 'download', 'delete'])
     parser.add_argument('-c', '--config', default='config.json',
                         help='QC API config file')
     parser.add_argument('--compile_id', help='Reuse a previous compile ID')
@@ -46,9 +46,16 @@ def main(args):
         results = backtest.wait()
         print json.dumps(results, sort_keys=True,
                          indent=4, separators=(',', ': '))
+    elif args.command == 'download':
+        logging.info('Fetching backtest results')
+        backtest = QCBacktest(client, args.backtest_id)
+        results = backtest.read()
+        print json.dumps(results, sort_keys=True,
+                         indent=4, separators=(',', ': '))
     elif args.command == 'delete':
         client = QCClient.from_config(cfg)
         backtest = QCBacktest(client, args.backtest_id)
+        backtest.delete()
     else:
         raise ValueError("Unknown command: %s" % args.command)
 
