@@ -99,11 +99,14 @@ class QCProject(object):
             json={'projectId': self.id})
         return result['files']
 
-    def compile(self):
+    def compile(self, lean_version=357):
+        # NOTE: versionId must be included even though it is not documented in the API
+        # See: https://www.quantconnect.com/forum/discussion/1018/compile-using-rest-api/p1
         self.logger.debug('Compiling project id: %s', self.id)
         result = self._client.perform(
             '/compiler/create',
-            json={'projectId': self.id})
+            json={'projectId': self.id,
+                  'versionId': lean_version})
         self.logger.debug('Create compile id: %s', result['compileId'])
         return QCCompile(result['compileId'], result['log'])
 
