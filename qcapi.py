@@ -17,7 +17,7 @@ class QCClient(object):
 
     @classmethod
     def from_config(cls, cfg):
-        """Initialize a QCProject from a config."""
+        """Initialize a QCClient from a config dictionary."""
         username = cfg['username']
         password = cfg['password']
         return cls(username, password)
@@ -155,6 +155,6 @@ class QCAPI(object):
         resp = self._client.perform('/projects/read')
         result = []
         for prj in sorted(resp['projects'], key=lambda p: p['modified']):
-            qcprj = QCProject(self, int(prj['id']), prj['name'])
+            qcprj = QCProject(self._client, int(prj['id']), prj['name'])
             result.append(qcprj)
         return result
