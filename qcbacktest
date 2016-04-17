@@ -24,6 +24,8 @@ def opts():
     parser.add_argument('--compile_id', help='Reuse a previous compile ID')
     parser.add_argument('--backtest_id', help='Backtest to delete')
     parser.add_argument('--name', help='Backtest name')
+    parser.add_argument('--version_id', type=int, default=357,
+                        help='Lean version id to use for compiles')
     return parser
 
 
@@ -34,7 +36,7 @@ def main(args):
 
     if args.command == 'build':
         logging.info("Building project")
-        c = project.compile()
+        c = project.compile(args.version_id)
         for entry in c.log:
             logging.debug(
                 "[%s] [%s] %s", entry['time'], entry['type'], entry['entry'])
@@ -42,7 +44,7 @@ def main(args):
         print c.id
     elif args.command == 'backtest':
         logging.info("Running backtest")
-        backtest = project.backtest(args.name, args.compile_id)
+        backtest = project.backtest(args.name, args.compile_id, args.version_id)
         results = backtest.wait()
         print json.dumps(results, sort_keys=True,
                          indent=4, separators=(',', ': '))
