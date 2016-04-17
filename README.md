@@ -9,7 +9,7 @@ Create a new project: `$ ./qcproject init --name MyProject --username $USERNAME 
 
 Connect to an existing project: `$ ./qcproject init --project_id=44343 --username $USERNAME --password $PASSWORD`
 
-Delete a project: $ ./qcproject delete --project_id=3434343`
+Delete a project: `$ ./qcproject delete --project_id=3434343`
 
 ## QCSync
 
