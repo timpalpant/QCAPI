@@ -34,7 +34,11 @@ def main(args):
         logging.debug('Downloaded %d files', len(files))
         for f in files:
             logging.debug('Saving: %s', f['name'])
-            with open(os.path.join('.', f['name']), 'w') as fd:
+            fullpath = f['name'].lstrip('/')
+            d = os.path.dirname(fullpath)
+            if d and not os.path.isdir(d):
+                os.makedirs(d)
+            with open(fullpath, 'w') as fd:
                 fd.write(f['code'])
     elif args.command == 'push':
         files_to_upload = glob.glob('*.cs') + glob.glob("**/*.cs")
@@ -60,7 +64,7 @@ def main(args):
             print "Added: %s" % f
 
         for f in remote_files:
-            fullpath = os.path.join('.', f['name'])
+            fullpath = f['name'].lstrip('/')
             if not os.path.isfile(fullpath):
                 continue
             local_content = [line.rstrip() for line in open(fullpath)]
